@@ -1,2 +1,1 @@
-// React context providers (AuthContext, ThemeContext, JobContext)
-export {};
+export { AuthContext, AuthProvider } from './AuthContext';

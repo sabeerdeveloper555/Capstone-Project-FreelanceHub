@@ -1,2 +1,1 @@
-// Custom custom hooks (useAuth, useFetch, useDebounce, etc.)
-export {};
+export { useAuth } from './useAuth';

@@ -1,2 +1,2 @@
-// Helper functions (currency formatting, date formatting, validation schema helpers)
-export {};
+// Utility helpers
+export { getErrorMessage } from './errorHandler';

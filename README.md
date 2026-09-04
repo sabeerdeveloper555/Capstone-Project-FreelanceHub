@@ -1,180 +1,444 @@
-# FreelanceHub PK
+# FreelanceHub-PK
 
-FreelanceHub PK is a full-stack platform built for Pakistani freelance talent and global clients to manage clients, track projects, monitor deadlines, and analyze financial performance with multi-tenant data isolation.
+## Overview
 
----
+FreelanceHub-PK is a full-stack freelance work-management application. It gives freelancers authenticated views for managing clients, tracking projects, monitoring deadlines, and reviewing budget and status metrics. It also supports client accounts and an authenticated client portal view.
 
-## 🚀 Key Features & Implementation Status
+## Problem
 
-- **Phase 1: Backend Foundation & Database Connection**
-  - Modular MongoDB / MongoDB Atlas Mongoose connection with lifecycle event handlers (`connected`, `disconnected`, `reconnected`, `error`).
-  - Express server with Helmet security headers, CORS, request parsing, and graceful shutdown (`SIGINT`, `SIGTERM`).
-  - Health check endpoint (`GET /api/health`).
+Freelancers need a single place to keep client details, project delivery information, deadlines, budgets, and account access organized instead of managing those details across disconnected tools.
 
-- **Phase 2: Database Models & Schema Validation**
-  - **User**: Name, unique lowercased email, hashed password, role (`freelancer` | `client`), timestamps.
-  - **Client**: Name, lowercased email, company, phone, country, notes, owner reference, timestamps.
-  - **Project**: Title, description, client reference, budget, deadline, status (`Planning` | `In Progress` | `Review` | `Completed` | `On Hold`), owner reference, timestamps.
+## Solution
 
-- **Phase 3: Authentication & Role-Based Access Control (RBAC)**
-  - `bcryptjs` password hashing with Mongoose `pre('save')` hooks and `matchPassword` comparison.
-  - Stateless JWT authentication via `protect` middleware.
-  - Granular RBAC via `authorizeRoles('freelancer', 'client')` middleware.
-  - Safe user serialization (passwords never stored or returned in plain text).
+The application combines a React frontend with an Express API and MongoDB/Mongoose persistence. JWT authentication, route protection, role checks, ownership checks, CRUD screens, dashboard metrics, validation, and user feedback states are implemented across the stack.
 
-- **Phase 4: Client Management CRUD (Multi-tenant Isolation)**
-  - Full CRUD operations restricted to the `freelancer` role.
-  - Automatic `owner` assignment and query scoping ensuring zero cross-tenant access.
+## Key Features
 
-- **Phase 5: Project Management CRUD & Relationship Validation**
-  - Project lifecycle management with client-project relationship verification.
-  - Strict ownership check preventing freelancers from assigning projects to clients they do not own.
-  - Populated client metadata in project query responses.
+### Authentication and Authorization
 
-- **Phase 6: Financials, Analytics & Freelancer Dashboard**
-  - High-performance MongoDB aggregation pipelines for metrics and financial computations.
-  - Real-time client and project status metrics.
-  - Server-side deadline analytics (`dueSoon`, `overdue`, `completed`).
-  - Monthly project volume tracking (`YYYY-MM`) and comprehensive budget breakdowns.
+- Public registration and login for `freelancer` and `client` roles.
+- JWT creation on successful registration or login.
+- JWT persistence in browser local storage and attachment to API requests through Axios.
+- Protected frontend routes and public-route redirects for authenticated users.
+- Frontend role routing for freelancer and client views, including a `/403` unauthorized page.
+- Backend `protect` middleware for JWT verification and `authorizeRoles` middleware for role checks.
+- Password hashing through a Mongoose `pre('save')` hook using `bcryptjs`.
 
----
+### Client Management
 
-## 🛠️ Technology Stack
+- Freelancer-only client create, list, view, update, and delete operations.
+- Client records include name, email, company, phone, country, notes, and owner.
+- Ownership is assigned from the authenticated user and checked for single-record operations.
+- Client search covers name, email, company, and phone.
 
-- **Backend**: Node.js (ES Modules), Express.js
-- **Database & ODM**: MongoDB / MongoDB Atlas, Mongoose
-- **Security & Authentication**: JSON Web Tokens (`jsonwebtoken`), `bcryptjs`, `helmet`, `cors`
-- **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons, Axios
+### Project Management
 
----
+- Freelancer-only project create, list, view, update, and delete operations.
+- Projects link to a client and validate that the client belongs to the authenticated freelancer.
+- Supported statuses are `Planning`, `In Progress`, `Review`, `Completed`, and `On Hold`.
+- Project search, status filtering, and sorting by recent order, deadline, or budget.
 
-## 📁 Project Structure
+### Dashboard
 
+- Freelancer dashboard overview with total clients, total projects, budgets, completed and in-progress budgets, and average budget.
+- Project status distribution.
+- Deadline summary for overdue, due soon, and completed projects.
+- Recent projects list.
+- Backend endpoints for monthly project counts, status counts, and financial statistics.
+
+### UI and UX
+
+- Responsive Tailwind CSS layouts with desktop sidebar navigation and mobile navigation controls.
+- Horizontally scrollable wide tables and responsive form/grid layouts.
+- Loading skeletons, empty states, API error messages, and retry actions on core pages.
+- Dark-mode utility classes are present throughout the interface. No explicit theme toggle or persisted theme preference is implemented in the repository.
+- Form labels, semantic headings, button names, and action labels support accessible interaction patterns.
+
+## Tech Stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React 18, Vite, React Router, Axios, Tailwind CSS, Lucide React |
+| Backend | Node.js ES modules, Express |
+| Database | MongoDB through Mongoose |
+| Authentication | JSON Web Tokens with `jsonwebtoken`; password hashing with `bcryptjs` |
+| Security and middleware | Helmet, CORS, Morgan, Express JSON/urlencoded parsers |
+| Testing | Vitest, React Testing Library, Testing Library jest-dom, user-event, jsdom, Supertest |
+| Deployment | No deployment configuration or verified live URL is present in the repository |
+
+## Architecture
+
+```mermaid
+flowchart TD
+    U[User] --> F[React + Vite frontend]
+    F --> R[React Router and AuthContext]
+    F --> A[Axios API services]
+    A --> E[Express app]
+    E --> M[Helmet, CORS, auth and error middleware]
+    E --> RT[Route modules]
+    RT --> C[Controllers]
+    C --> MD[Mongoose models]
+    MD --> DB[(MongoDB)]
+    S[server.js] --> E
+    S --> DB
 ```
+
+The repository has controller modules and route modules; it does not contain a separate service layer on the backend.
+
+## Application Flow
+
+```mermaid
+flowchart LR
+    V[Visit application] --> Auth{Authenticated?}
+    Auth -- No --> Login[Login or Register]
+    Auth -- Yes --> Role{Role}
+    Login --> JWT[Receive and store JWT]
+    JWT --> Role
+    Role -- Freelancer --> Dash[Dashboard]
+    Role -- Client --> Portal[Client Portal]
+    Dash --> Clients[Manage Clients]
+    Dash --> Projects[Manage Projects]
+    Clients --> API[Express API]
+    Projects --> API
+    API --> Mongo[(MongoDB)]
+```
+
+## Authentication and Authorization
+
+Registration accepts a name, email, password, and optional role. The backend validates the input, normalizes the email, hashes the password through the User model hook, creates the user, and returns a signed JWT. Login validates credentials and returns a JWT and safe user fields.
+
+The frontend stores the token under `freelancehub_token`. The Axios request interceptor sends it as a Bearer token. A `401` response removes the token and dispatches an `auth:logout` event. On initialization, the frontend calls `/api/auth/me` when a stored token exists and clears invalid authentication state when that request fails.
+
+Backend protected routes verify the JWT, load the user without the password, and apply role checks. Client and project records additionally check ownership. Frontend role routes redirect unauthorized users to `/403`.
+
+## Database
+
+### User
+
+- `name`: required string, minimum length 2.
+- `email`: required, unique, lowercased and trimmed, schema-validated.
+- `password`: required, minimum length 6, hashed before save.
+- `role`: required enum: `freelancer` or `client`.
+- Automatic `createdAt` and `updatedAt` timestamps.
+
+### Client
+
+- `name` and `email`: required; email is lowercased, trimmed, and schema-validated.
+- `company`, `phone`, `country`, `notes`: optional trimmed strings defaulting to empty strings.
+- `owner`: required indexed reference to `User`.
+- Automatic timestamps.
+
+### Project
+
+- `title`: required trimmed string.
+- `description`: optional trimmed string.
+- `client`: required indexed reference to `Client`.
+- `budget`: required number with a minimum of zero.
+- `deadline`: required date.
+- `status`: required enum: `Planning`, `In Progress`, `Review`, `Completed`, or `On Hold`.
+- `owner`: required indexed reference to `User`.
+- Automatic timestamps.
+
+```mermaid
+erDiagram
+    USER ||--o{ CLIENT : owns
+    USER ||--o{ PROJECT : owns
+    CLIENT ||--o{ PROJECT : has
+    USER {
+        ObjectId _id
+        string name
+        string email
+        string password
+        string role
+    }
+    CLIENT {
+        ObjectId _id
+        string name
+        string email
+        ObjectId owner
+    }
+    PROJECT {
+        ObjectId _id
+        string title
+        ObjectId client
+        ObjectId owner
+        number budget
+        date deadline
+        string status
+    }
+```
+
+There is no verified cascade-delete behavior from clients to projects.
+
+## API Documentation
+
+All endpoints below are mounted by `backend/src/app.js`.
+
+| Method | Endpoint | Purpose | Auth / role |
+| --- | --- | --- | --- |
+| GET | `/` | Return API metadata and health-check link | Public |
+| GET | `/api/health` | Return API, process, environment, and database connection status | Public |
+| GET | `/health` | Health-check alias | Public |
+| POST | `/api/auth/register` | Register a user and return a JWT | Public |
+| POST | `/api/auth/login` | Authenticate credentials and return a JWT | Public |
+| GET | `/api/auth/me` | Return the authenticated user profile | JWT |
+| POST | `/api/clients` | Create a client | JWT + freelancer |
+| GET | `/api/clients` | List owned clients | JWT + freelancer |
+| GET | `/api/clients/:id` | Get one owned client | JWT + freelancer; ownership checked |
+| PUT | `/api/clients/:id` | Update one owned client | JWT + freelancer; ownership checked |
+| DELETE | `/api/clients/:id` | Delete one owned client | JWT + freelancer; ownership checked |
+| POST | `/api/projects` | Create a project for an owned client | JWT + freelancer |
+| GET | `/api/projects` | List owned projects with populated client fields | JWT + freelancer |
+| GET | `/api/projects/:id` | Get one owned project | JWT + freelancer; ownership checked |
+| PUT | `/api/projects/:id` | Update one owned project | JWT + freelancer; ownership checked |
+| DELETE | `/api/projects/:id` | Delete one owned project | JWT + freelancer; ownership checked |
+| GET | `/api/dashboard` | Return dashboard metrics and recent projects | JWT + freelancer |
+| GET | `/api/dashboard/projects/monthly` | Return monthly project counts | JWT + freelancer |
+| GET | `/api/dashboard/projects/status` | Return counts for each project status | JWT + freelancer |
+| GET | `/api/dashboard/financials` | Return budget totals grouped by financial status | JWT + freelancer |
+
+## Frontend Pages and Views
+
+The application defines 9 route entries in `frontend/src/App.jsx`.
+
+| Route | Page / view | Purpose | Access |
+| --- | --- | --- | --- |
+| `/` | Root redirect | Sends users to login, dashboard, or client portal based on auth state and role | Public entry |
+| `/login` | Login | Authenticate an account | Public |
+| `/register` | Register | Create a freelancer or client account | Public |
+| `/dashboard` | Dashboard | View freelancer metrics and recent projects | Authenticated freelancer |
+| `/clients` | Clients | Manage client records | Authenticated freelancer |
+| `/projects` | Projects | Manage project records and filters | Authenticated freelancer |
+| `/client` | Client Portal | Show authenticated client workspace state | Authenticated client |
+| `/403` | Unauthorized | Show forbidden-access view | Public |
+| `*` | Catch-all redirect | Redirect unknown routes to `/` | Public |
+
+The client portal currently renders authenticated client identity and an empty project-information state. No client-scoped project API route is mounted.
+
+## CRUD Operations
+
+### Clients
+
+The backend and freelancer UI support create, read/list, update, and delete operations. Individual reads and mutations verify ownership.
+
+### Projects
+
+The backend and freelancer UI support create, read/list, update, and delete operations. Project creation and client reassignment validate client ownership, and individual reads and mutations verify project ownership.
+
+## Validation and Error Handling
+
+- Login validates required email/password fields and email format in the browser.
+- Registration validates name, email, password length, and role.
+- Client forms require name and email; the backend also validates email format.
+- Project forms require title, client, budget, and deadline; the backend validates ObjectId format, client ownership, budget, deadline, and status.
+- Backend controllers return structured `success` and `message` fields for validation and authorization failures.
+- Express provides a not-found handler and centralized error handler.
+- Dashboard, Clients, and Projects render loading skeletons, empty states, visible API errors, and retry actions.
+
+## Responsive Design
+
+Tailwind responsive classes provide breakpoint-based grids, spacing, and navigation. The desktop layout uses a sidebar; mobile navigation uses the mobile header and menu components. Wide data tables and dashboard project lists use horizontal overflow containers. Forms and action controls adapt between stacked and multi-column layouts.
+
+## Dark Mode
+
+The frontend includes `dark:` Tailwind classes across the layout, forms, cards, tables, badges, and state components. The repository does not contain a theme toggle, theme context, or persisted theme preference, so the available behavior is styling support through Tailwind dark-mode classes rather than a documented in-app theme switcher.
+
+## Testing
+
+The repository contains exactly 12 named tests: 5 frontend and 7 backend.
+
+| Area | Test | Purpose |
+| --- | --- | --- |
+| Frontend | `renders the login form controls` | Verifies the login heading, email input, password input, and submit button. |
+| Frontend | `shows login validation errors for empty credentials` | Verifies existing empty-login validation messages. |
+| Frontend | `renders registration fields and validates a short password` | Verifies registration controls and short-password validation. |
+| Frontend | `redirects an unauthenticated user to login` | Verifies protected-route redirect behavior. |
+| Frontend | `shows the empty state when the API returns no clients` | Verifies the Clients empty state and action. |
+| Backend | `registers a freelancer and returns a JWT` | Verifies registration status, user response fields, and token creation. |
+| Backend | `logs in with registered credentials` | Verifies successful credential authentication and JWT response. |
+| Backend | `rejects invalid login credentials` | Verifies invalid credentials return `401`. |
+| Backend | `rejects protected client access without a token` | Verifies missing-token rejection. |
+| Backend | `creates and retrieves clients for the authenticated freelancer` | Verifies authenticated client create and list response behavior. |
+| Backend | `creates and retrieves a project linked to an owned client` | Verifies project creation, client linking, and list response behavior. |
+| Backend | `forbids a client role from accessing freelancer resources` | Verifies backend freelancer-only RBAC. |
+
+Frontend tests use Vitest, React Testing Library, jest-dom, user-event, and jsdom. Backend tests use Vitest and Supertest. Backend model methods are intentionally test-doubled; the backend suite does not connect to a real MongoDB instance or an in-memory MongoDB server. Therefore, the tests exercise HTTP routing, middleware, validation, controller behavior, JWT handling, and response contracts without claiming real persistence integration.
+
+Run the suites with:
+
+```powershell
+cd frontend
+npm test
+
+cd ..\backend
+npm test
+```
+
+## Security
+
+Verified security-related implementation includes:
+
+- Password hashing with `bcryptjs` before User persistence.
+- JWT signing and verification with configurable `JWT_SECRET` and `JWT_EXPIRES_IN`.
+- Protected backend routes and frontend protected routes.
+- Freelancer/client role checks and ownership checks for client and project resources.
+- Helmet security headers.
+- CORS configuration using `CLIENT_URL`.
+- Input and schema validation for authentication, clients, and projects.
+- Environment variables for connection strings and authentication configuration.
+
+## Project Structure
+
+```text
 FreelanceHub-PK/
-├── backend/                       # Node.js + Express backend API
-│   ├── src/
-│   │   ├── config/                # Database connection & lifecycle management (db.js)
-│   │   ├── controllers/           # Business logic & request controllers
-│   │   │   ├── authController.js
-│   │   │   ├── clientController.js
-│   │   │   ├── projectController.js
-│   │   │   └── dashboardController.js
-│   │   ├── middleware/            # Custom middleware
-│   │   │   ├── authMiddleware.js  # JWT verification & RBAC authorization
-│   │   │   ├── asyncHandler.js    # Async exception wrapper
-│   │   │   └── errorMiddleware.js # Centralized 404 and global error handlers
-│   │   ├── models/                # Mongoose database models
-│   │   │   ├── User.js
-│   │   │   ├── Client.js
-│   │   │   ├── Project.js
-│   │   │   └── index.js
-│   │   ├── routes/                # Express route declarations
-│   │   │   ├── healthRoutes.js
-│   │   │   ├── authRoutes.js
-│   │   │   ├── clientRoutes.js
-│   │   │   ├── projectRoutes.js
-│   │   │   └── dashboardRoutes.js
-│   │   ├── utils/                 # Utilities (generateToken.js)
-│   │   └── app.js                 # Express application pipeline & route mounting
-│   ├── .env.example               # Backend environment variables template
-│   ├── package.json               # Backend dependencies & scripts
-│   └── server.js                  # Application bootloader & graceful shutdown handler
-│
-├── frontend/                      # React + Vite frontend application
-│   ├── src/
-│   │   ├── assets/                # Static assets
-│   │   ├── components/            # Reusable UI components
-│   │   ├── pages/                 # Application page views
-│   │   ├── services/              # Axios API client services
-│   │   ├── App.jsx                # Root application component
-│   │   ├── main.jsx               # React entry point
-│   │   └── index.css              # Tailwind CSS directives
-│   ├── .env.example               # Frontend environment variables template
-│   ├── package.json               # Frontend dependencies & scripts
-│   ├── tailwind.config.js         # Tailwind configuration
-│   └── vite.config.js             # Vite configuration
-│
-└── README.md
+├── README.md
+├── CASE_STUDY.md
+├── backend/
+│   ├── package.json
+│   ├── server.js
+│   ├── config/db.js
+│   └── src/
+│       ├── app.js
+│       ├── config/db.js
+│       ├── controllers/
+│       ├── middleware/
+│       ├── models/
+│       ├── routes/
+│       ├── test/api.test.js
+│       └── utils/
+└── frontend/
+    ├── package.json
+    ├── vite.config.js
+    ├── tailwind.config.js
+    └── src/
+        ├── App.jsx
+        ├── main.jsx
+        ├── index.css
+        ├── components/
+        │   ├── auth/
+        │   ├── common/
+        │   ├── layout/
+        │   └── ui/
+        ├── context/
+        ├── hooks/
+        ├── pages/
+        ├── services/
+        ├── test/
+        └── utils/
 ```
 
----
+## Installation and Local Development
 
-## 📡 API Reference & Endpoints
+### Prerequisites
 
-### System Health
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/health` | Public | Returns server status, uptime, environment, and MongoDB readyState |
+- Node.js and npm.
+- A MongoDB instance or MongoDB Atlas connection string.
 
-### Authentication (`/api/auth`)
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register new user (`freelancer` or `client`) and receive JWT |
-| `POST` | `/api/auth/login` | Public | Authenticate user credentials and receive JWT |
-| `GET` | `/api/auth/me` | Protected | Retrieve authenticated user profile |
+### 1. Clone the repository
 
-### Client Management (`/api/clients`)
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/clients` | Private (`freelancer`) | Create a new client (auto-assigns `owner`) |
-| `GET` | `/api/clients` | Private (`freelancer`) | List all clients owned by authenticated freelancer |
-| `GET` | `/api/clients/:id` | Private (`freelancer`) | Retrieve single client by ID (ownership verified) |
-| `PUT` | `/api/clients/:id` | Private (`freelancer`) | Update client details (ownership verified) |
-| `DELETE` | `/api/clients/:id` | Private (`freelancer`) | Delete client (ownership verified) |
+Use the repository URL supplied for your environment:
 
-### Project Management (`/api/projects`)
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/projects` | Private (`freelancer`) | Create project (validates client ownership) |
-| `GET` | `/api/projects` | Private (`freelancer`) | List all projects owned by freelancer (populates `client`) |
-| `GET` | `/api/projects/:id` | Private (`freelancer`) | Retrieve project by ID (populates `client`) |
-| `PUT` | `/api/projects/:id` | Private (`freelancer`) | Update project (validates project & client ownership) |
-| `DELETE` | `/api/projects/:id` | Private (`freelancer`) | Delete project (ownership verified) |
-
-### Dashboard & Analytics (`/api/dashboard`)
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/dashboard` | Private (`freelancer`) | Overview (client counts, budget totals, status distribution, deadline metrics, recent projects) |
-| `GET` | `/api/dashboard/projects/monthly` | Private (`freelancer`) | Monthly project creation timeline |
-| `GET` | `/api/dashboard/projects/status` | Private (`freelancer`) | Project count grouped by status |
-| `GET` | `/api/dashboard/financials` | Private (`freelancer`) | Detailed financial breakdown (total, completed, in-progress, average budget) |
-
----
-
-## ⚙️ Environment Configuration
-
-### Backend (`backend/.env`)
-```env
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb://127.0.0.1:27017/freelancehub
-CLIENT_URL=http://localhost:5173
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRES_IN=7d
+```powershell
+git clone <repository-url>
+cd FreelanceHub-PK
 ```
 
-### Frontend (`frontend/.env`)
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+### 2. Install backend dependencies
 
----
-
-## 🏃 Getting Started
-
-### 1. Backend Server Setup
-```bash
+```powershell
 cd backend
 npm install
-npm run dev
 ```
-Backend runs on `http://localhost:5000`.
 
-### 2. Frontend Application Setup
-```bash
-cd frontend
-npm install
+### 3. Configure backend environment variables
+
+Copy `backend/.env.example` to `backend/.env` and set a real MongoDB connection string and JWT secret. Do not commit the `.env` file.
+
+### 4. Start the backend
+
+Development mode:
+
+```powershell
 npm run dev
 ```
-Frontend runs on `http://localhost:5173`.
+
+The configured default port is `5000` when `PORT` is not overridden. The production-style script is `npm start`.
+
+### 5. Install and configure the frontend
+
+```powershell
+cd ..\frontend
+npm install
+```
+
+Copy `frontend/.env.example` to `frontend/.env` if the API base URL needs to be changed. The default frontend API client base URL is `/api` when `VITE_API_BASE_URL` is not set.
+
+### 6. Start the frontend
+
+```powershell
+npm run dev
+```
+
+Vite is configured for port `5173` and proxies `/api` requests to `http://localhost:5000` during development.
+
+Available frontend scripts are `dev`, `build`, `lint`, `preview`, and `test`. Available backend scripts are `start`, `dev`, and `test`.
+
+## Environment Variables
+
+| Variable | Location | Purpose | Required |
+| --- | --- | --- | --- |
+| `PORT` | Backend | HTTP server port; defaults to `5000` | No |
+| `NODE_ENV` | Backend | Runtime environment label and development logging behavior | No |
+| `MONGODB_URI` | Backend | MongoDB/MongoDB Atlas connection string | Yes for backend startup |
+| `CLIENT_URL` | Backend | CORS allowed frontend origin | No; defaults to `http://localhost:5173` |
+| `JWT_SECRET` | Backend | JWT signing and verification secret | No; code has a development fallback, but a private configured value is required for real use |
+| `JWT_EXPIRES_IN` | Backend | JWT expiration setting | No; code defaults to `7d` |
+| `VITE_API_BASE_URL` | Frontend | Axios API base URL | No; defaults to `/api` |
+
+## Deployment
+
+No Vercel, Render, Docker, CI/CD, or other hosting configuration is present in the repository. No live frontend or backend URL can be verified.
+
+**TODO:** Verify the current deployment provider, production environment variables, and live URLs before final submission.
+
+## Screenshots
+
+Screenshots are not present in the repository and should be added before final portfolio submission:
+
+- Dashboard
+- Clients
+- Projects
+- Login
+- Register
+- Mobile responsive view
+- Dark-mode view
+
+## Development Phases
+
+The repository history currently exposes one recent commit, `feat: implement frontend authentication and protected routing`. Earlier development phases are described in the previous README content but are not independently verifiable from the current Git history. No additional phase history is asserted here.
+
+## Challenges and Solutions
+
+A verified implementation complexity is keeping ownership consistent across related resources. Client and project controllers derive ownership from the authenticated user, check client ownership before project creation or reassignment, and check record ownership for individual reads and mutations. This keeps the relationship between a freelancer, their clients, and their projects enforced at the API boundary.
+
+## Future Enhancements
+
+The following are future ideas, not implemented features:
+
+- Add client-scoped project data and client-facing project actions.
+- Add messaging and notifications between freelancers and clients.
+- Add file or document management for project deliverables.
+- Add payment or invoicing integration.
+- Add automated CI checks and a documented deployment pipeline.
+- Add browser-level end-to-end tests and real persistence test infrastructure.
+
+## Roadmap
+
+1. Verify and document the production deployment setup.
+2. Expand the client portal with server-backed client-scoped project information.
+3. Add CI execution for lint, build, and both test suites.
+4. Add screenshots and portfolio-ready usage flows.
+
+## License
+
+License: To be added.
