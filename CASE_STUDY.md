@@ -1,103 +1,167 @@
-# FreelanceHub-PK - Case Study
+# FreelanceHub-PK Case Study
 
 ## 1. Project Overview
 
-FreelanceHub-PK is a full-stack freelance work-management application for organizing client records, projects, deadlines, budgets, and role-based account access. The implemented product combines a React/Vite frontend with an Express/Mongoose API.
+FreelanceHub-PK is a full-stack freelance work-management platform for organizing clients, projects, project status, budgets, deadlines, and role-based account access. It supports freelancer and client accounts through a React/Vite frontend and an Express API backed by MongoDB and Mongoose.
 
 ## 2. The Problem
 
-Freelancers need a reliable workspace for keeping client information and project delivery details together. Without a focused workflow, client contacts, project status, deadlines, and financial context can become fragmented.
+Freelancers can struggle to keep client information, projects, deadlines, budgets, and delivery status organized in one place. FreelanceHub-PK addresses this need with a focused workspace for client and project administration.
 
-## 3. The Target Users
+## 3. Target Users
 
-The application supports two account roles:
-
-- **Freelancers**, who manage clients and projects and view dashboard metrics.
-- **Clients**, who can authenticate and access the current client portal view.
-
-The current client portal is an authenticated workspace state; the repository does not implement a client-scoped project API.
+- **Freelancers** can register, sign in, manage their clients and projects, search and filter records, and review dashboard metrics.
+- **Clients** can register, sign in, and access a protected client portal foundation. The current portal displays authenticated client identity and workspace state; expanded server-backed client project visibility is planned.
 
 ## 4. The Solution
 
-FreelanceHub-PK provides protected role-based navigation and a freelancer workflow for client and project CRUD. The backend validates requests, signs JWTs, enforces role and ownership rules, and exposes dashboard metrics backed by MongoDB.
+FreelanceHub-PK combines authentication, protected navigation, role-based authorization, ownership checks, and CRUD workflows in one application. Authenticated freelancers can manage Client and Project records, associate projects with their owned clients, review budget/status/deadline metrics, and use search, filtering, and sorting controls. The frontend and backend both validate input and expose loading, error, retry, and empty states.
 
 ## 5. Core Features
 
-- Registration and login for freelancer and client roles.
-- JWT-backed authentication with protected frontend and backend routes.
-- Freelancer dashboard with client, project, budget, status, and deadline metrics.
+- Freelancer and client registration and login.
+- JWT authentication with browser token persistence and Axios Bearer-token requests.
+- Protected frontend routes and backend JWT middleware.
+- Freelancer/client role-based access control and `/403` handling.
 - Client create, list, view, update, and delete operations.
 - Project create, list, view, update, and delete operations.
-- Project search, status filtering, and budget/deadline sorting.
-- Responsive layouts, mobile navigation, loading skeletons, empty states, API errors, and retry actions.
+- User ownership checks for clients and projects, including client ownership checks when creating or reassigning projects.
+- Project search, status filtering, and sorting by recent order, deadline, or budget.
+- Freelancer dashboard metrics for clients, projects, budgets, project status, deadlines, monthly project counts, and financial summaries.
+- Responsive layouts, desktop/mobile navigation, loading skeletons, empty states, API errors, and retry actions.
+
+File uploads, payments, real-time features, and a user-facing dark-mode toggle are not implemented.
 
 ## 6. Technology Choices
 
-- **React 18 and Vite** provide a component-based frontend with a fast development/build toolchain.
-- **React Router** handles public, protected, and role-specific views.
-- **Express and Node.js ES modules** provide a small route/controller API architecture.
-- **MongoDB and Mongoose** model users, clients, and projects with schema validation and references.
-- **JWT and bcryptjs** implement stateless authentication and password hashing.
-- **Tailwind CSS** supports responsive utility-based styling and dark-mode variants.
-- **Vitest, React Testing Library, and Supertest** provide focused frontend and HTTP behavior tests.
+- **React 18 and Vite:** component-based UI development with a fast local and production build toolchain.
+- **React Router:** public, protected, and role-specific frontend navigation.
+- **Axios:** centralized API requests with a configurable base URL and JWT interceptor.
+- **Tailwind CSS:** responsive utility-based styling and consistent interface states.
+- **Lucide React:** reusable interface icons for navigation, actions, status, and feedback states.
+- **Node.js, Express, and ES modules:** a lightweight HTTP API organized into routes, middleware, controllers, and models.
+- **MongoDB and Mongoose:** persistent document storage with schemas, references, indexes, timestamps, and validation.
+- **jsonwebtoken and bcryptjs:** signed JWT authentication and password hashing.
+- **Helmet, CORS, and Morgan:** HTTP security headers, cross-origin policy, and development request logging.
+- **Vitest, React Testing Library, jest-dom, user-event, and Supertest:** focused frontend behavior and backend HTTP tests.
 
 ## 7. Architecture
 
 ```mermaid
 flowchart LR
-    Browser --> React[React frontend]
-    React --> Axios[Axios services]
-    Axios --> Express[Express API]
-    Express --> Controllers
+    Browser --> Frontend[React + Vite frontend]
+    Frontend --> Router[React Router and AuthContext]
+    Router --> Axios[Axios API services]
+    Axios --> API[Express API]
+    API --> Middleware[Helmet, CORS, auth, and error middleware]
+    Middleware --> Routes[Route modules]
+    Routes --> Controllers[Controllers]
     Controllers --> Mongoose[Mongoose models]
-    Mongoose --> MongoDB[(MongoDB)]
+    Mongoose --> Mongo[(MongoDB Atlas)]
 ```
+
+The backend uses route and controller modules without a separate service layer. The frontend and backend are deployed separately on Vercel. The frontend Vercel rewrite supports React SPA routes, while the backend Vercel rewrite and serverless entry point route requests to the Express application.
 
 ## 8. Authentication and Authorization
 
-Registration and login return JWTs. The frontend stores the token locally and sends it as a Bearer token through an Axios interceptor. Backend middleware verifies the token, loads the user without the password, and enforces role checks.
+Registration accepts a name, email, password, and optional `freelancer` or `client` role. The backend validates required fields and email format, checks whether the email is already registered, hashes the password with the User model's `bcryptjs` pre-save hook, and returns a signed JWT. Login validates credentials and returns a JWT with safe user fields.
 
-Freelancer-only client and project routes also check ownership. Frontend role routes send unauthorized users to `/403`, while unauthenticated protected-route access redirects to `/login`.
+The frontend stores the token in local storage under `freelancehub_token`. Axios reads that token and adds an `Authorization: Bearer <token>` header to requests. On initialization, the AuthContext validates a stored token through `/api/auth/me`; logout and unauthorized responses clear the stored token and user state.
 
-## 9. Testing and Quality
+Frontend `ProtectedRoute` redirects unauthenticated users to `/login`, and `RoleRoute` redirects users with an invalid role to `/403`. Backend `protect` middleware verifies JWTs and loads the authenticated user without the password. `authorizeRoles('freelancer')` protects freelancer resources, while client and project controllers compare record ownership with the authenticated user before individual reads and mutations.
 
-The repository contains exactly **12 named tests**:
+## 9. CRUD and Data Model
 
-- **5 frontend tests** covering login rendering, login validation, registration validation, protected-route redirect, and the Clients empty state.
-- **7 backend tests** covering registration/JWT response, login, invalid credentials, missing-token rejection, client create/list behavior, project create/list behavior, and client-role RBAC.
+The data relationships are:
 
-Frontend tests use Vitest with React Testing Library, jest-dom, user-event, and jsdom. Backend tests use Vitest and Supertest. Backend model persistence is intentionally test-doubled; the suite does not connect to a real MongoDB instance or an in-memory database. This limits the persistence claim while still exercising the HTTP routes, middleware, controller paths, JWT behavior, and response contracts.
+```mermaid
+erDiagram
+    USER ||--o{ CLIENT : owns
+    USER ||--o{ PROJECT : owns
+    CLIENT ||--o{ PROJECT : has
+```
 
-## 10. Biggest Challenge
+- **User:** name, email, hashed password, role, and timestamps.
+- **Client:** name, email, company, phone, country, notes, owner reference, and timestamps.
+- **Project:** title, description, client reference, budget, deadline, status, owner reference, and timestamps.
 
-The repository does not record a historical project challenge in Git history. One implementation challenge visible in the current code is enforcing ownership across the related Client and Project resources.
+Authenticated freelancers can manage their clients. Projects are associated with clients and owned by the authenticated freelancer. The API validates that a selected or reassigned client belongs to that freelancer and checks ownership for client/project reads, updates, and deletes. No cascade delete from clients to projects is implemented.
 
-A project cannot be created for an unowned client, and individual client/project operations compare the record owner with the authenticated user. The frontend complements this with role-specific navigation and route guards. This approach keeps multi-user data boundaries at the backend API rather than relying only on frontend visibility.
+## 10. Validation and Error Handling
 
-## 11. UI/UX and Accessibility
+- Frontend forms validate required authentication, client, and project fields before submission.
+- Backend controllers validate names, email formats, passwords, roles, ObjectId values, budgets, deadlines, and allowed project statuses.
+- Mongoose schemas enforce required fields, email formats, role/status enums, non-negative budgets, references, and timestamps.
+- Registration returns a validation error when an email is already registered.
+- Invalid credentials and missing or invalid JWTs return authentication errors; role and ownership failures return authorization errors.
+- Controllers return structured `success` and `message` response fields for common validation and authorization failures.
+- Express provides not-found and centralized error handlers.
+- Dashboard, Clients, and Projects render loading skeletons, empty states, visible API errors, and retry actions.
 
-The interface uses responsive Tailwind breakpoints, a desktop sidebar, mobile navigation components, responsive forms, and horizontally scrollable wide tables. Core pages expose loading skeletons, empty states, API error messages, and retry actions.
+## 11. Testing and Quality
 
-Inputs use labels and form associations, action buttons use descriptive text or accessible labels, and the application uses semantic headings and navigation elements. Dark-mode utility classes exist throughout the interface, but no in-app theme toggle or persisted theme setting is implemented.
+The repository currently contains **12 tests**:
 
-## 12. Deployment
+- **5 frontend tests:** login rendering, login validation, registration validation, protected-route redirection, and the Clients empty state.
+- **7 backend tests:** registration and JWT response, login, invalid credentials, missing-token rejection, authenticated client create/list behavior, authenticated project create/list behavior, and client-role RBAC.
 
-No deployment provider configuration or live URL is verifiable in the repository.
+Frontend tests use Vitest, React Testing Library, jest-dom, user-event, and jsdom. Backend tests use Vitest and Supertest. Backend model methods are test-doubled, so the suite does not connect to a real MongoDB instance or an in-memory database. It verifies HTTP routing, middleware, controller behavior, validation, JWT handling, authorization, and response contracts without claiming persistence integration coverage.
 
-**TODO:** Verify the production hosting provider, environment variables, and live URLs before presenting the project publicly.
+Run the suites with:
 
-## 13. Outcome
+```powershell
+cd frontend
+npm test
 
-The completed repository demonstrates a working full-stack foundation for freelance operations: React views communicate with an Express API, MongoDB models define the data relationships, JWT middleware protects requests, role and ownership checks constrain access, and the test suite documents 12 core behaviors.
+cd ..\backend
+npm test
+```
 
-## 14. Future Enhancements
+## 12. UI/UX and Accessibility
 
-- Expand the client portal with server-backed project visibility.
-- Add messaging, notifications, file management, and payment workflows.
-- Add browser-level end-to-end coverage and real MongoDB persistence tests.
-- Add CI/CD and documented production deployment.
-- Add portfolio screenshots for dashboard, CRUD views, authentication, mobile, and dark-mode states.
+The interface uses responsive Tailwind breakpoints, a desktop sidebar, mobile navigation, responsive forms, and horizontally scrollable tables. Core views expose loading skeletons, empty states, API error messages, and retry actions. Form controls use labels and associations, while the application uses semantic headings and navigation elements.
 
-## 15. Conclusion
+Dark-mode utility classes are present, but an in-app theme toggle or persisted theme preference is not currently implemented.
 
-FreelanceHub-PK presents a focused full-stack solution for managing the operational details of freelance work. Its current implementation demonstrates practical React, Express, MongoDB, authentication, authorization, CRUD, validation, responsive UI, and automated testing skills while leaving clear, honest boundaries for the next product iteration.
+## 13. Deployment
+
+- **Frontend:** [Vercel deployment](https://capstone-project-freelance-hub-sk8u.vercel.app/) serving the React/Vite application.
+- **Backend:** [Vercel deployment](https://capstone-project-freelance-hub.vercel.app/) serving the Express API through the serverless entry point at `backend/api/index.js`.
+- **API health check:** [Production health endpoint](https://capstone-project-freelance-hub.vercel.app/api/health).
+- **Source repository:** [GitHub repository](https://github.com/sabeerdeveloper555/Capstone-Project-FreelanceHub).
+
+The backend connects to MongoDB Atlas through `MONGODB_URI`. The frontend production API base URL is configured through `VITE_API_BASE_URL`. The repository includes `frontend/vercel.json` for SPA rewrites and `backend/vercel.json` for backend request rewrites. Environment values are configured separately for deployments; no secrets are documented here. The current backend CORS implementation explicitly allowlists the local frontend origin and the deployed frontend origin in `backend/src/app.js`; it does not read `CLIENT_URL` dynamically.
+
+## 14. Outcome
+
+FreelanceHub-PK is a deployed full-stack capstone MVP. It demonstrates a React/Vite frontend, Express backend, MongoDB/Mongoose persistence, JWT authentication, role-based permissions, ownership-protected CRUD for related Client and Project resources, client/server validation, responsive UI states, and 12 automated tests. The implementation is suitable for demonstrating a complete working workflow without claiming production-scale usage or real-user metrics.
+
+## 15. Capstone Requirement Alignment
+
+| Requirement                         | Evidence in the implementation                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 4-5+ frontend pages/views           | Login, Register, Dashboard, Clients, Projects, Client Portal, and Unauthorized views are routed in `frontend/src/App.jsx`. |
+| CRUD for 2 related resources        | Clients and Projects support create, read/list, update, and delete operations; Projects reference Clients.                 |
+| Real MongoDB database               | Mongoose models connect through `MONGODB_URI`; production uses MongoDB Atlas.                                              |
+| Authentication and protected routes | JWT registration/login, AuthContext persistence, `ProtectedRoute`, and backend `protect` middleware.                       |
+| Role-based permissions              | Freelancer-only backend resources, frontend role guards, and `/403` handling.                                              |
+| Client and server validation        | Browser form validation, controller validation, and Mongoose schema validation.                                            |
+| Loading, error, and empty states    | Implemented across dashboard, client, and project workflows.                                                               |
+| Responsive UI                       | Tailwind responsive layouts, mobile navigation, responsive forms, and table overflow handling.                             |
+| Deployed frontend and backend       | Separate Vercel deployments are linked above.                                                                              |
+| Public GitHub repository            | The repository is linked above.                                                                                            |
+| Automated tests                     | 5 frontend tests plus 7 backend tests, 12 total.                                                                           |
+| Verified stretch goals              | Search, filtering, sorting, and dashboard analytics/status visualizations.                                                 |
+
+## 16. Future Enhancements
+
+- Expand the client portal with server-backed project visibility and client actions.
+- Add messaging and notifications.
+- Add file/document management and payment or invoicing workflows.
+- Add browser-level end-to-end tests and real MongoDB or in-memory persistence test infrastructure.
+- Add CI/CD and stronger production observability.
+- Add portfolio screenshots for the dashboard, CRUD views, authentication flow, and responsive layouts.
+
+## 17. Conclusion
+
+FreelanceHub-PK delivers a focused, deployed full-stack solution for managing freelance clients and projects. Its capstone MVP demonstrates practical React, Express, MongoDB, authentication, authorization, CRUD, validation, responsive UI, and automated testing while documenting clear next steps for future product growth.
