@@ -1,6 +1,4 @@
 import 'dotenv/config';
-
-
 import app from './src/app.js';
 import { connectDB, disconnectDB } from './src/config/db.js';
 
@@ -13,23 +11,23 @@ const startServer = async () => {
     await connectDB();
 
     const server = app.listen(PORT, () => {
-      console.log(`🚀 FreelanceHub PK Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-      console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`FreelanceHub PK Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+      console.log(`Health Check: http://localhost:${PORT}/api/health`);
     });
 
     // Graceful Shutdown logic
     const handleShutdown = async (signal) => {
-      console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
+      console.log(`\nReceived ${signal}. Initiating graceful shutdown...`);
       server.close(async () => {
         console.log('🔌 HTTP server closed.');
         await disconnectDB();
-        console.log('✨ FreelanceHub PK backend exited cleanly.');
+        console.log('FreelanceHub PK backend exited cleanly.');
         process.exit(0);
       });
 
       // Force exit after 10s if connections fail to close
       setTimeout(() => {
-        console.error('⚠️ Forced shutdown due to timeout.');
+        console.error('Forced shutdown due to timeout.');
         process.exit(1);
       }, 10000);
     };
@@ -39,16 +37,16 @@ const startServer = async () => {
 
     // Handle Unhandled Rejections and Uncaught Exceptions
     process.on('unhandledRejection', (reason) => {
-      console.error('💥 Unhandled Rejection:', reason);
+      console.error('Unhandled Rejection:', reason);
     });
 
     process.on('uncaughtException', (error) => {
-      console.error('💥 Uncaught Exception:', error);
+      console.error('Uncaught Exception:', error);
       process.exit(1);
     });
 
   } catch (error) {
-    console.error(`❌ Fatal startup error: ${error.message}`);
+    console.error(`Fatal startup error: ${error.message}`);
     process.exit(1);
   }
 };
