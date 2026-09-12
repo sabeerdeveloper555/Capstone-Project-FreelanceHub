@@ -15,7 +15,7 @@ const getPreferredTheme = () => {
 
 const styles = {
   default: 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white',
-  sidebar: 'text-neutral-300 hover:bg-neutral-800 hover:text-white',
+  sidebar: 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white',
 };
 
 export default function ThemeToggle({ variant = 'default' }) {
