@@ -70,6 +70,14 @@ describe('authentication pages', () => {
 });
 
 describe('protected application routes', () => {
+  it('shows the workspace loading screen while authentication initializes', () => {
+    renderWithAuth(<App />, { isLoading: true }, ['/dashboard']);
+
+    expect(screen.getByRole('status', { name: 'Loading your FreelanceHub workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'FreelanceHub' })).toBeInTheDocument();
+    expect(screen.getByText('Loading your workspace...')).toBeInTheDocument();
+  });
+
   it('redirects an unauthenticated user to login', async () => {
     renderWithAuth(<App />, { isLoading: false, isAuthenticated: false }, ['/dashboard']);
 

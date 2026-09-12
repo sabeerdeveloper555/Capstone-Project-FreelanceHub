@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks';
 import { ProtectedRoute, RoleRoute, PublicRoute } from './components/auth';
+import { LoadingScreen } from './components/common';
 import {
   Login,
   Register,
@@ -12,17 +13,7 @@ import {
 } from './pages';
 
 const RootRedirect = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300">
-        <div className="text-center">
-          <p className="text-sm font-medium">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
+  const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -36,6 +27,12 @@ const RootRedirect = () => {
 };
 
 function App() {
+  const { isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />

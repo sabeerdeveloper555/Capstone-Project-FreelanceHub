@@ -1,2 +1,2 @@
 // Centralized component exports for buttons, inputs, modals, cards, headers, etc.
-export {};
+export { default as LoadingScreen } from './LoadingScreen';
