@@ -35,7 +35,7 @@ export default function Sidebar({ onNavigate, mobile = false }) {
           </div>
         ))}
       </nav>
-      <UserMenu />
+      <UserMenu showThemeToggle={!mobile} />
     </aside>
   );
 }

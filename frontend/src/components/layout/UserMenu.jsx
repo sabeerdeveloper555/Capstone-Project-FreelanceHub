@@ -1,8 +1,9 @@
 import { LogOut, UserCircle } from 'lucide-react';
 import { useAuth } from '../../hooks';
+import { ThemeToggle } from '../common';
 import Button from '../ui/Button';
 
-export default function UserMenu() {
+export default function UserMenu({ showThemeToggle = true }) {
   const { user, logout } = useAuth();
   return (
     <div className="border-t border-neutral-700 p-4">
@@ -13,6 +14,7 @@ export default function UserMenu() {
           <p className="truncate text-xs text-neutral-400">{user?.email || user?.role}</p>
         </div>
       </div>
+      {showThemeToggle && <ThemeToggle variant="sidebar" />}
       <Button variant="ghost" onClick={logout} className="w-full justify-start text-neutral-300 hover:bg-neutral-800 hover:text-white">
         <LogOut size={16} /> Log out
       </Button>

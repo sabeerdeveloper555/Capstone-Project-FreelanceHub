@@ -7,6 +7,8 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Clients from '../pages/Clients';
 import { AuthContext } from '../context/AuthContext';
+import MobileHeader from '../components/layout/MobileHeader';
+import ThemeToggle from '../components/common/ThemeToggle';
 import * as clientService from '../services/clientService';
 
 vi.mock('../services/clientService', () => ({
@@ -82,6 +84,26 @@ describe('protected application routes', () => {
     renderWithAuth(<App />, { isLoading: false, isAuthenticated: false }, ['/dashboard']);
 
     expect(await screen.findByRole('heading', { name: 'Sign in to your account' })).toBeInTheDocument();
+  });
+});
+
+describe('navigation controls', () => {
+  it('keeps the mobile navigation control available while the drawer is open', () => {
+    renderWithAuth(<MobileHeader open onToggle={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Close navigation' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('switches and persists the selected theme', async () => {
+    const user = userEvent.setup();
+    localStorage.clear();
+    document.documentElement.classList.remove('dark');
+    renderWithAuth(<ThemeToggle />);
+
+    await user.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+
+    expect(document.documentElement).toHaveClass('dark');
+    expect(localStorage.getItem('freelancehub_theme')).toBe('dark');
   });
 });
 
